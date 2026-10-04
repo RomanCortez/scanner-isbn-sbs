@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Escáner ISBN → SBS</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f4;font-family:Arial,sans-serif;color:#202525}main{max-width:520px;margin:auto;padding:16px}.card{background:#fff;border-radius:20px;padding:18px;box-shadow:0 4px 20px #0002}h1{font-size:25px;margin:0 0 5px}p{color:#666;margin:6px 0 16px;line-height:1.35}.scan{width:100%;height:300px;background:#111;border-radius:15px;overflow:hidden;position:relative}video{width:100%;height:100%;object-fit:cover}.frame{position:absolute;left:9%;right:9%;top:29%;height:42%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 999px #0005}.status{text-align:center;font-weight:bold;margin:14px 0 10px;min-height:20px}.isbn{font-size:23px;text-align:center;letter-spacing:1.5px;padding:13px 9px;border:1px solid #ddd;border-radius:11px;background:#fafafa;min-height:53px;word-break:break-all}.buttons{display:grid;gap:10px;margin-top:12px}button{border:0;border-radius:13px;padding:15px 12px;font-size:17px;font-weight:bold;cursor:pointer}.primary{background:#111;color:#fff}.green{background:#16835d;color:#fff}.light{background:#e9edeb;color:#202525}.blue{background:#1769aa;color:#fff}.manual{display:flex;gap:8px;margin-top:18px}.manual input{min-width:0;flex:1;padding:13px;border:1px solid #ccc;border-radius:10px;font-size:17px}.manual button{padding:13px 18px}.small{font-size:13px;color:#777;margin-top:14px;line-height:1.45}.hidden{display:none}.tip{background:#eef8f4;border-radius:12px;padding:11px 12px;font-size:14px;color:#245b49;margin-top:13px;line-height:1.4}
+</style>
+</head>
+<body><main><div class="card">
+<h1>📚 Escáner ISBN → SBS</h1>
+<p>Escaneá el código de barras del libro. El ISBN queda listo para copiar y abrir tu SBS.</p>
+<div class="scan"><video id="video" playsinline muted></video><div class="frame"></div></div>
+<div id="status" class="status">Tocá “Escanear ISBN” para empezar.</div>
+<div id="isbn" class="isbn">—</div>
+<div class="buttons">
+<button id="start" class="primary">📷 Escanear ISBN</button>
+<button id="search" class="green hidden">🚀 Copiar ISBN y abrir SBS</button>
+<button id="copy" class="light hidden">📋 Copiar ISBN</button>
+<button id="next" class="blue hidden">📖 Siguiente libro</button>
+</div>
+<div class="manual"><input id="manual" inputmode="numeric" autocomplete="off" placeholder="O escribí el ISBN"><button id="manualBtn" class="light">OK</button></div>
+<div class="tip">💡 <b>En SBS:</b> seleccioná <b>I - ISBN</b> y pegá el número. Chrome no permite que esta página escriba directamente dentro del buscador de SBS.</div>
+<div class="small">El botón verde hace el máximo posible con una página web: copia el ISBN mediante el toque del usuario y abre tu SBS. Después solo tenés que pegarlo en el campo ISBN.</div>
+</div></main>
+<script>
+const video=document.getElementById('video'),status=document.getElementById('status'),out=document.getElementById('isbn'),start=document.getElementById('start'),copy=document.getElementById('copy'),search=document.getElementById('search'),next=document.getElementById('next'),manual=document.getElementById('manual'),manualBtn=document.getElementById('manualBtn');
+let stream=null,detector=null,timer=null,current='';
+function clean(v){return String(v||'').replace(/[^0-9Xx]/g,'').toUpperCase()}
+function setISBN(v){v=clean(v);if(v.length<10){status.textContent='⚠️ El ISBN parece incompleto.';return}current=v;out.textContent=v;status.textContent='✅ ISBN detectado';copy.classList.remove('hidden');search.classList.remove('hidden');next.classList.remove('hidden');if(navigator.vibrate)navigator.vibrate(120);stop()}
+function stop(){if(timer){clearTimeout(timer);timer=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null}
+async function scan(){
+ try{
+  if(!('BarcodeDetector' in window)){status.textContent='⚠️ Tu navegador no tiene lector automático. Usá el campo de abajo o Google Lens.';return}
+  const formats=await BarcodeDetector.getSupportedFormats();
+  const wanted=formats.filter(x=>['ean_13','ean_8','upc_a','upc_e'].includes(x));
+  detector=new BarcodeDetector({formats:wanted.length?wanted:formats});
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+  video.srcObject=stream;await video.play();status.textContent='📷 Buscando código…';
+  const loop=async()=>{if(!stream)return;try{const codes=await detector.detect(video);if(codes.length&&codes[0].rawValue){setISBN(codes[0].rawValue);return}}catch(e){}timer=setTimeout(loop,160)};loop();
+ }catch(e){status.textContent='⚠️ No se pudo abrir la cámara. Revisá el permiso de Chrome.';}
+}
+start.onclick=scan;
+copy.onclick=async()=>{if(!current)return;try{await navigator.clipboard.writeText(current);status.textContent='✅ ISBN copiado al portapapeles';}catch(e){status.textContent='Seleccioná el número y copiá: '+current;}};
+search.onclick=async()=>{if(!current)return;try{await navigator.clipboard.writeText(current);status.textContent='📋 Copiado. Abriendo SBS…';setTimeout(()=>location.href='https://ag.sbs.com.ar/Home/Books',120);}catch(e){status.textContent='⚠️ No se pudo copiar. Usá “Copiar ISBN” y luego abrí SBS.';copy.classList.remove('hidden');}};
+next.onclick=()=>{current='';out.textContent='—';manual.value='';status.textContent='Listo para el siguiente libro.';search.classList.add('hidden');copy.classList.add('hidden');next.classList.add('hidden');scan()};
+manualBtn.onclick=()=>setISBN(manual.value);manual.addEventListener('keydown',e=>{if(e.key==='Enter')manualBtn.click()});window.addEventListener('pagehide',stop);
+</script></body></html>
