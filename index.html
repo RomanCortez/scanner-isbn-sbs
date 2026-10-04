@@ -1,507 +1,148 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#24221f">
-  <meta name="description" content="Escáner ISBN para consultar libros en SBS Distribuidora.">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Escáner ISBN">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="favicon.png">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <title>Escáner ISBN · SBS</title>
-
-  <style>
-    :root{
-      --ink:#24221f;
-      --ink-soft:#514b44;
-      --cream:#f8f5ef;
-      --beige:#e9e0d1;
-      --beige-2:#d9cdbb;
-      --paper:#fffdf9;
-      --line:#d7cdbf;
-      --accent:#8b7b68;
-      --ok:#596c5b;
-    }
-    *{box-sizing:border-box}
-    html,body{width:100%;height:100%;margin:0;overflow:hidden}
-    body{
-      background:var(--cream);
-      color:var(--ink);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      -webkit-tap-highlight-color:transparent;
-    }
-    button{font:inherit}
-    .app{
-      width:100%;
-      height:100dvh;
-      height:100svh;
-      display:grid;
-      grid-template-rows:auto minmax(0,1fr) auto auto;
-      overflow:hidden;
-    }
-    header{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding:10px 16px 8px;
-      background:var(--paper);
-      border-bottom:1px solid var(--line);
-      min-height:62px;
-    }
-    .brand{
-      width:42px;height:42px;flex:0 0 42px;
-      border-radius:50%;
-      overflow:hidden;
-      background:#fff;
-      border:1px solid var(--line);
-      display:grid;place-items:center;
-    }
-    .brand img{width:100%;height:100%;object-fit:cover}
-    .titles{min-width:0}
-    h1{
-      margin:0;
-      font-size:18px;
-      line-height:1.1;
-      letter-spacing:-.02em;
-      font-weight:750;
-    }
-    .sub{
-      margin-top:3px;
-      color:var(--ink-soft);
-      font-size:11px;
-      line-height:1.2;
-    }
-
-    .scanner-wrap{
-      position:relative;
-      min-height:0;
-      padding:10px 12px 8px;
-      display:flex;
-      align-items:stretch;
-      justify-content:center;
-    }
-    #reader{
-      width:min(100%, 520px);
-      height:100%;
-      min-height:0;
-      border:1px solid var(--line);
-      border-radius:20px;
-      overflow:hidden;
-      background:#171614;
-      position:relative;
-    }
-    #reader video{
-      width:100% !important;
-      height:100% !important;
-      object-fit:cover !important;
-    }
-    #reader__dashboard_section,
-    #reader__dashboard_section_csr,
-    #reader__dashboard_section_swaplink{
-      display:none !important;
-    }
-    #reader img{
-      max-width:100%;
-    }
-
-    .scan-frame{
-      pointer-events:none;
-      position:absolute;
-      left:50%;top:50%;
-      width:min(72vw,320px);
-      height:min(30vw,120px);
-      transform:translate(-50%,-50%);
-      border:2px solid rgba(255,253,249,.92);
-      border-radius:12px;
-      box-shadow:0 0 0 9999px rgba(0,0,0,.12);
-    }
-    .scan-frame:before,.scan-frame:after{
-      content:"";
-      position:absolute;
-      width:22px;height:22px;
-      border-color:var(--beige);
-      border-style:solid;
-    }
-    .scan-frame:before{
-      left:-2px;top:-2px;border-width:3px 0 0 3px;border-radius:10px 0 0 0;
-    }
-    .scan-frame:after{
-      right:-2px;bottom:-2px;border-width:0 3px 3px 0;border-radius:0 0 10px 0;
-    }
-    .status{
-      position:absolute;
-      left:50%;bottom:18px;
-      transform:translateX(-50%);
-      background:rgba(36,34,31,.78);
-      color:#fffdf9;
-      border:1px solid rgba(255,255,255,.18);
-      border-radius:999px;
-      padding:6px 11px;
-      font-size:11px;
-      white-space:nowrap;
-      backdrop-filter:blur(7px);
-    }
-
-    .info{
-      padding:0 16px 7px;
-      text-align:center;
-    }
-    .info p{
-      margin:0 auto;
-      max-width:520px;
-      color:var(--ink-soft);
-      font-size:11px;
-      line-height:1.3;
-    }
-    .isbn-result{
-      display:none;
-      align-items:center;
-      justify-content:center;
-      gap:7px;
-      margin:0 auto 5px;
-      max-width:520px;
-      padding:7px 10px;
-      background:var(--paper);
-      border:1px solid var(--line);
-      border-radius:10px;
-      font-size:13px;
-    }
-    .isbn-result strong{font-variant-numeric:tabular-nums;letter-spacing:.03em}
-
-    .actions{
-      padding:6px 14px calc(10px + env(safe-area-inset-bottom));
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:8px;
-      background:var(--paper);
-      border-top:1px solid var(--line);
-    }
-    .btn{
-      min-height:43px;
-      border:1px solid var(--line);
-      border-radius:12px;
-      background:var(--beige);
-      color:var(--ink);
-      font-weight:700;
-      font-size:12px;
-      padding:0 10px;
-      cursor:pointer;
-    }
-    .btn:active{transform:scale(.985)}
-    .btn.primary{
-      background:var(--ink);
-      color:var(--paper);
-      border-color:var(--ink);
-    }
-    .btn.ghost{background:var(--paper)}
-    .btn:disabled{opacity:.45}
-    .wide{grid-column:1/-1}
-    .utility-row{
-      position:absolute;
-      top:18px;right:20px;
-      z-index:5;
-      display:flex;
-      gap:7px;
-    }
-    .circle-btn{
-      width:40px;height:40px;
-      border-radius:50%;
-      border:1px solid rgba(255,255,255,.35);
-      background:rgba(36,34,31,.72);
-      color:#fffdf9;
-      display:grid;place-items:center;
-      cursor:pointer;
-      backdrop-filter:blur(8px);
-    }
-    .circle-btn svg{width:19px;height:19px}
-    .install{
-      display:none;
-    }
-    .toast{
-      position:fixed;
-      left:50%;bottom:88px;
-      transform:translate(-50%,20px);
-      opacity:0;
-      pointer-events:none;
-      background:var(--ink);
-      color:var(--paper);
-      border:1px solid rgba(255,255,255,.15);
-      border-radius:10px;
-      padding:9px 12px;
-      font-size:12px;
-      z-index:30;
-      transition:.22s ease;
-      white-space:nowrap;
-    }
-    .toast.show{opacity:1;transform:translate(-50%,0)}
-
-    @media (max-height:620px){
-      header{min-height:52px;padding:7px 12px}
-      .brand{width:34px;height:34px;flex-basis:34px}
-      h1{font-size:16px}
-      .sub{display:none}
-      .scanner-wrap{padding:7px 10px 5px}
-      .info{padding-bottom:3px}
-      .info p{font-size:10px}
-      .actions{padding:4px 10px 7px}
-      .btn{min-height:38px;font-size:11px}
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#2a2723">
+<meta name="description" content="Escáner ISBN para consultar libros en SBS Distribuidora.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Escáner ISBN">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Escáner ISBN · SBS</title>
+<style>
+:root{--ink:#292621;--ink2:#5b554d;--cream:#f6f1e8;--paper:#fffdf9;--beige:#e7dccb;--beige2:#d5c6b1;--line:#d5c9b8;--ok:#66745f;--danger:#8a6257;--scale:1}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--cream);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}
+button{font:inherit}
+.app{height:100dvh;height:100svh;min-height:100%;display:flex;flex-direction:column;overflow:hidden}
+header{height:76px;flex:0 0 76px;display:flex;align-items:center;gap:12px;padding:10px 18px;background:var(--paper);border-bottom:1px solid var(--line)}
+.brand{width:52px;height:52px;flex:0 0 52px;border-radius:50%;overflow:hidden;background:#fff;border:1px solid var(--line);display:grid;place-items:center}.brand img{width:100%;height:100%;object-fit:cover}
+.titles{min-width:0;flex:1}h1{margin:0;font-size:22px;line-height:1.05;font-weight:800;letter-spacing:-.025em}.sub{margin-top:5px;color:var(--ink2);font-size:13px;line-height:1.15}
+.header-btn{width:46px;height:46px;flex:0 0 46px;border:1px solid var(--line);border-radius:14px;background:var(--cream);color:var(--ink);display:grid;place-items:center}.header-btn svg{width:23px;height:23px}
+.screen{display:none;flex:1;min-height:0;overflow:hidden}.screen.active{display:flex}
+#home{flex-direction:column}
+.camera-area{position:relative;flex:1;min-height:0;padding:12px 14px 8px;display:flex;justify-content:center}
+#reader{width:min(100%,560px);height:100%;min-height:0;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:#151412;position:relative}
+#reader video{width:100%!important;height:100%!important;object-fit:cover!important}
+#reader__dashboard_section,#reader__dashboard_section_csr,#reader__dashboard_section_swaplink{display:none!important}
+#reader img{max-width:100%}
+.scan-frame{pointer-events:none;position:absolute;left:50%;top:50%;width:min(78vw,370px);height:min(31vw,132px);transform:translate(-50%,-50%);border:3px solid rgba(255,253,249,.95);border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.16)}
+.scan-frame:before,.scan-frame:after{content:"";position:absolute;width:28px;height:28px;border-color:var(--beige2);border-style:solid}.scan-frame:before{left:-3px;top:-3px;border-width:4px 0 0 4px;border-radius:13px 0 0}.scan-frame:after{right:-3px;bottom:-3px;border-width:0 4px 4px 0;border-radius:0 0 13px}
+.status{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);background:rgba(41,38,33,.86);color:#fffdf9;border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:9px 15px;font-size:13px;font-weight:650;white-space:nowrap;backdrop-filter:blur(8px)}
+.utility{position:absolute;top:24px;right:26px;display:flex;gap:9px;z-index:4}.circle{width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,.38);background:rgba(41,38,33,.78);color:#fffdf9;display:grid;place-items:center;backdrop-filter:blur(8px)}.circle svg{width:23px;height:23px}.circle:disabled{opacity:.42}
+.info{flex:0 0 auto;padding:3px 18px 7px;text-align:center}.help{margin:0 auto;color:var(--ink2);font-size:14px;line-height:1.25;max-width:600px}.isbn-result{display:none;align-items:center;justify-content:center;gap:8px;margin:0 auto 6px;max-width:600px;padding:10px 13px;background:var(--paper);border:1px solid var(--line);border-radius:13px;font-size:17px}.isbn-result strong{font-variant-numeric:tabular-nums;letter-spacing:.04em;font-size:18px}
+.actions{flex:0 0 auto;padding:7px 14px calc(12px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;gap:9px;background:var(--paper);border-top:1px solid var(--line)}
+.btn{min-height:52px;border:1px solid var(--line);border-radius:15px;background:var(--beige);color:var(--ink);font-weight:750;font-size:14px;padding:0 12px;cursor:pointer}.btn:active{transform:scale(.985)}.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}.btn.ghost{background:var(--paper)}.btn:disabled{opacity:.45}.wide{grid-column:1/-1}.again{display:none}.install{display:none}
+/* Settings */
+#settings{flex-direction:column;padding:18px;gap:12px}.settings-top{display:flex;align-items:center;gap:10px}.back{width:46px;height:46px;border:1px solid var(--line);border-radius:14px;background:var(--paper);display:grid;place-items:center;color:var(--ink)}.back svg{width:23px;height:23px}.settings-title{font-size:23px;font-weight:800}.settings-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:16px}.setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 0}.setting-row+.setting-row{border-top:1px solid var(--line)}.setting-label{font-size:15px;font-weight:750}.setting-desc{font-size:12px;color:var(--ink2);margin-top:3px;line-height:1.25}.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;flex:0 0 auto}.seg button{border:0;border-left:1px solid var(--line);background:var(--cream);padding:9px 11px;font-size:12px;font-weight:750;color:var(--ink)}.seg button:first-child{border-left:0}.seg button.active{background:var(--ink);color:var(--paper)}.settings-note{margin-top:auto;padding:12px 2px;color:var(--ink2);font-size:12px;line-height:1.35;text-align:center}
+.toast{position:fixed;left:50%;bottom:94px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--ink);color:var(--paper);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:11px 14px;font-size:13px;font-weight:650;z-index:30;transition:.22s ease;white-space:nowrap}.toast.show{opacity:1;transform:translate(-50%,0)}
+body.text-large{--scale:1.12}body.text-large h1{font-size:24px}body.text-large .sub{font-size:14px}body.text-large .help{font-size:16px}body.text-large .btn{font-size:15px}body.text-large .isbn-result{font-size:18px}body.text-large .isbn-result strong{font-size:20px}
+@media (max-height:680px){header{height:66px;flex-basis:66px}.brand{width:44px;height:44px;flex-basis:44px}h1{font-size:19px}.sub{font-size:11px}.camera-area{padding:8px 10px 5px}.utility{top:17px;right:18px}.circle{width:42px;height:42px}.help{font-size:12px}.btn{min-height:45px;font-size:12px}.info{padding-bottom:4px}.isbn-result{padding:7px;font-size:14px}.isbn-result strong{font-size:15px}}
+@media (max-height:560px){.help{display:none}.info{padding:0}.actions{padding-top:5px;padding-bottom:7px}.btn{min-height:39px}.camera-area{padding-bottom:4px}}
+</style>
 </head>
 <body>
 <div class="app">
-  <header>
-    <div class="brand"><img src="icon-192.png" alt="Logo"></div>
-    <div class="titles">
-      <h1>Escáner ISBN</h1>
-      <div class="sub">Escaneá un libro y consultalo en SBS</div>
-    </div>
-  </header>
+<header>
+  <div class="brand"><img src="icon-192.png" alt="Logo de la librería"></div>
+  <div class="titles"><h1>Escáner ISBN</h1><div class="sub">Escaneá un libro y consultalo en SBS</div></div>
+  <button class="header-btn" id="settingsBtn" type="button" aria-label="Abrir ajustes" title="Ajustes">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="m19.4 15 .1.1a2 2 0 0 1-2.8 2.8l-.1-.1a2 2 0 0 0-3.4 1.4v.2a2 2 0 0 1-4 0v-.2a2 2 0 0 0-3.4-1.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A2 2 0 0 0 3.6 12v-.2a2 2 0 0 0-2-.9 2 2 0 1 1 0-4h.2a2 2 0 0 0 1.8-2.9l-.1-.1A2 2 0 1 1 6.3 1l.1.1A2 2 0 0 0 9.8 0v-.2a2 2 0 0 1 4 0V0a2 2 0 0 0 3.4 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a2 2 0 0 0 1.4 3.4h.2a2 2 0 1 1 0 4h-.2a2 2 0 0 0-1.8 3.7Z" transform="translate(-.6 3.1) scale(.9)"/></svg>
+  </button>
+</header>
 
-  <main class="scanner-wrap">
+<main id="home" class="screen active">
+  <div class="camera-area">
     <div id="reader"></div>
     <div class="scan-frame"></div>
     <div class="status" id="status">Iniciando cámara…</div>
-
-    <div class="utility-row">
-      <button class="circle-btn" id="flashBtn" type="button" aria-label="Encender flash" title="Flash" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M13 2 5 13h6l-1 9 8-12h-6l1-8Z"/>
-        </svg>
+    <div class="utility">
+      <button class="circle" id="flashBtn" type="button" aria-label="Encender flash" title="Flash" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 5 13h6l-1 9 8-12h-6l1-8Z"/></svg>
       </button>
-      <button class="circle-btn" id="shareBtn" type="button" aria-label="Compartir app" title="Compartir">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/>
-          <path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>
-        </svg>
+      <button class="circle" id="shareBtn" type="button" aria-label="Compartir app" title="Compartir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg>
       </button>
     </div>
-  </main>
-
+  </div>
   <section class="info">
-    <div class="isbn-result" id="result">
-      <span>ISBN:</span><strong id="isbn"></strong>
-    </div>
-    <p>Apuntá al código de barras del libro. Cuando lo detecte, podés copiar el ISBN y abrir SBS, o entrar a SBS para buscarlo manualmente.</p>
+    <div class="isbn-result" id="result"><span>ISBN:</span><strong id="isbn"></strong></div>
+    <p class="help">Apuntá al código de barras del libro y mantenelo dentro del recuadro. La app detecta el ISBN automáticamente.</p>
   </section>
-
   <footer class="actions">
     <button class="btn primary" id="copyOpenBtn" type="button" disabled>Copiar ISBN y abrir SBS</button>
-    <button class="btn ghost" id="manualBtn" type="button">Abrir SBS · búsqueda manual</button>
-    <button class="btn ghost wide" id="againBtn" type="button">Escanear otro libro</button>
+    <button class="btn ghost" id="manualBtn" type="button">Abrir SBS manualmente</button>
+    <button class="btn ghost wide again" id="againBtn" type="button">Escanear otro libro</button>
     <button class="btn ghost wide install" id="installBtn" type="button">Instalar como app</button>
   </footer>
-</div>
+</main>
 
+<section id="settings" class="screen">
+  <div class="settings-top">
+    <button class="back" id="backBtn" type="button" aria-label="Volver">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <div class="settings-title">Ajustes</div>
+  </div>
+  <div class="settings-card">
+    <div class="setting-row">
+      <div><div class="setting-label">Tamaño del texto</div><div class="setting-desc">Elegí una vista cómoda para tu teléfono.</div></div>
+      <div class="seg" id="textSize"><button data-size="normal" class="active">Normal</button><button data-size="large">Grande</button></div>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Flash</div><div class="setting-desc">El botón aparece sobre la cámara cuando el teléfono lo permite.</div></div>
+      <div style="font-size:12px;color:var(--ink2);font-weight:700">Automático</div>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Cámara</div><div class="setting-desc">Al abrir la app se intenta iniciar la cámara trasera automáticamente.</div></div>
+      <div style="font-size:12px;color:var(--ok);font-weight:800">ACTIVA</div>
+    </div>
+  </div>
+  <div class="settings-card">
+    <div class="setting-label">Cómo usarla</div>
+    <div class="setting-desc" style="font-size:14px;margin-top:7px">1. Abrí la app.<br>2. Apuntá al código de barras ISBN.<br>3. Cuando aparezca el número, tocá “Copiar ISBN y abrir SBS”.<br>4. En SBS, pegalo en la búsqueda seleccionando “I - ISBN”.</div>
+  </div>
+  <div class="settings-note">Escáner ISBN · SBS<br>Una herramienta de uso interno para la librería.</div>
+</section>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-(() => {
-  const SBS = "https://ag.sbs.com.ar/Home/Books";
-  const readerId = "reader";
-  const statusEl = document.getElementById("status");
-  const isbnEl = document.getElementById("isbn");
-  const resultEl = document.getElementById("result");
-  const copyOpenBtn = document.getElementById("copyOpenBtn");
-  const manualBtn = document.getElementById("manualBtn");
-  const againBtn = document.getElementById("againBtn");
-  const flashBtn = document.getElementById("flashBtn");
-  const shareBtn = document.getElementById("shareBtn");
-  const installBtn = document.getElementById("installBtn");
-  const toast = document.getElementById("toast");
-
-  let scanner = null;
-  let currentIsbn = "";
-  let torchOn = false;
-  let starting = false;
-  let deferredInstallPrompt = null;
-
-  function showToast(message) {
-    toast.textContent = message;
-    toast.classList.add("show");
-    clearTimeout(showToast.t);
-    showToast.t = setTimeout(() => toast.classList.remove("show"), 1900);
-  }
-
-  function normalizeIsbn(value) {
-    const digits = String(value || "").replace(/[^0-9Xx]/g, "").toUpperCase();
-    if (digits.length === 13 && digits.startsWith("978")) return digits;
-    if (digits.length === 13 && digits.startsWith("979")) return digits;
-    if (digits.length === 10) return digits;
-    return digits;
-  }
-
-  function isLikelyIsbn(value) {
-    const n = normalizeIsbn(value);
-    return n.length === 10 || n.length === 13;
-  }
-
-  function setStatus(text) {
-    statusEl.textContent = text;
-  }
-
-  function stopScanner() {
-    if (!scanner) return Promise.resolve();
-    return scanner.stop().catch(() => {}).then(() => {
-      flashBtn.disabled = true;
-      torchOn = false;
-    });
-  }
-
-  async function startScanner() {
-    if (starting) return;
-    starting = true;
-    currentIsbn = "";
-    isbnEl.textContent = "";
-    resultEl.style.display = "none";
-    copyOpenBtn.disabled = true;
-    againBtn.style.display = "none";
-    flashBtn.disabled = true;
-    setStatus("Iniciando cámara…");
-
-    try {
-      if (!scanner) scanner = new Html5Qrcode(readerId, { verbose: false });
-
-      await scanner.start(
-        { facingMode: { ideal: "environment" } },
-        {
-          fps: 12,
-          qrbox: { width: Math.min(320, Math.floor(window.innerWidth * 0.72)), height: 110 },
-          aspectRatio: 1.777,
-          disableFlip: true
-        },
-        async (decodedText) => {
-          const isbn = normalizeIsbn(decodedText);
-          if (!isLikelyIsbn(decodedText)) return;
-          currentIsbn = isbn;
-          isbnEl.textContent = isbn;
-          resultEl.style.display = "flex";
-          copyOpenBtn.disabled = false;
-          againBtn.style.display = "block";
-          setStatus("ISBN detectado");
-          await stopScanner();
-        },
-        () => {}
-      );
-
-      setStatus("Apuntá al código de barras");
-      await setupTorch();
-    } catch (err) {
-      console.error(err);
-      setStatus("No se pudo iniciar la cámara");
-      showToast("Revisá el permiso de cámara del navegador");
-      flashBtn.disabled = true;
-    } finally {
-      starting = false;
-    }
-  }
-
-  async function setupTorch() {
-    try {
-      const track = scanner.getRunningTrackCameraCapabilities?.();
-      const caps = scanner.getRunningTrackCapabilities?.();
-      if (caps && "torch" in caps) {
-        flashBtn.disabled = false;
-        return;
-      }
-      // Some versions expose the MediaStreamTrack directly.
-      const video = document.querySelector("#reader video");
-      const stream = video?.srcObject;
-      const t = stream?.getVideoTracks?.()[0];
-      if (t && t.getCapabilities && "torch" in t.getCapabilities()) {
-        flashBtn.disabled = false;
-        return;
-      }
-      flashBtn.disabled = true;
-    } catch {
-      flashBtn.disabled = true;
-    }
-  }
-
-  async function toggleTorch() {
-    try {
-      const video = document.querySelector("#reader video");
-      const track = video?.srcObject?.getVideoTracks?.()[0];
-      if (!track || !track.getCapabilities || !("torch" in track.getCapabilities())) {
-        showToast("El flash no está disponible en este teléfono");
-        return;
-      }
-      torchOn = !torchOn;
-      await track.applyConstraints({ advanced: [{ torch: torchOn }] });
-      flashBtn.style.opacity = torchOn ? "1" : ".8";
-      showToast(torchOn ? "Flash encendido" : "Flash apagado");
-    } catch {
-      showToast("El flash no se pudo activar");
-    }
-  }
-
-  copyOpenBtn.addEventListener("click", async () => {
-    if (!currentIsbn) return;
-    // Open immediately from the user gesture, then copy in parallel.
-    const tab = window.open(SBS, "_blank");
-    try {
-      await navigator.clipboard.writeText(currentIsbn);
-      showToast("ISBN copiado. Pegalo en SBS.");
-    } catch {
-      showToast("SBS abierto. Copiá el ISBN manualmente.");
-    }
-    if (!tab) window.location.href = SBS;
-  });
-
-  manualBtn.addEventListener("click", () => {
-    window.location.href = SBS;
-  });
-
-  againBtn.addEventListener("click", async () => {
-    await startScanner();
-  });
-
-  flashBtn.addEventListener("click", toggleTorch);
-
-  shareBtn.addEventListener("click", async () => {
-    const shareData = {
-      title: "Escáner ISBN · SBS",
-      text: "Escáner ISBN para consultar libros en SBS.",
-      url: location.href
-    };
-    try {
-      if (navigator.share) await navigator.share(shareData);
-      else {
-        await navigator.clipboard.writeText(location.href);
-        showToast("Enlace copiado para compartir");
-      }
-    } catch {}
-  });
-
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    installBtn.style.display = "block";
-  });
-
-  installBtn.addEventListener("click", async () => {
-    if (!deferredInstallPrompt) return;
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    installBtn.style.display = "none";
-  });
-
-  window.addEventListener("appinstalled", () => {
-    installBtn.style.display = "none";
-    showToast("App instalada");
-  });
-
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(console.error));
-  }
-
-  // Start automatically: no separate "Escanear" button.
-  startScanner();
+(()=>{
+const SBS="https://ag.sbs.com.ar/Home/Books";
+const $=id=>document.getElementById(id);
+const home=$('home'),settings=$('settings'),statusEl=$('status'),isbnEl=$('isbn'),resultEl=$('result'),copyOpenBtn=$('copyOpenBtn'),manualBtn=$('manualBtn'),againBtn=$('againBtn'),flashBtn=$('flashBtn'),shareBtn=$('shareBtn'),installBtn=$('installBtn'),toast=$('toast');
+let scanner=null,currentIsbn='',starting=false,torchOn=false,deferredInstallPrompt=null, cameraFailed=false;
+function toastMsg(m){toast.textContent=m;toast.classList.add('show');clearTimeout(toastMsg.t);toastMsg.t=setTimeout(()=>toast.classList.remove('show'),2100)}
+function normalize(v){const d=String(v||'').replace(/[^0-9Xx]/g,'').toUpperCase();return d}
+function likely(v){const d=normalize(v);return d.length===10||d.length===13}
+function setStatus(t){statusEl.textContent=t}
+async function stopScanner(){if(!scanner)return;try{await scanner.stop()}catch{}flashBtn.disabled=true;torchOn=false}
+async function setupTorch(){try{const video=document.querySelector('#reader video');const track=video?.srcObject?.getVideoTracks?.()[0];if(track?.getCapabilities&&('torch' in track.getCapabilities())){flashBtn.disabled=false;return}}catch{}flashBtn.disabled=true}
+async function startScanner(){if(starting)return;starting=true;cameraFailed=false;currentIsbn='';isbnEl.textContent='';resultEl.style.display='none';copyOpenBtn.disabled=true;againBtn.style.display='none';flashBtn.disabled=true;setStatus('Iniciando cámara…');try{if(!window.Html5Qrcode)throw new Error('scanner library unavailable');if(!scanner)scanner=new Html5Qrcode('reader',{verbose:false});
+await scanner.start({facingMode:'environment'},{fps:12,qrbox:{width:Math.min(370,Math.floor(window.innerWidth*.78)),height:132},aspectRatio:1.777,disableFlip:true},async text=>{const isbn=normalize(text);if(!likely(isbn))return;currentIsbn=isbn;isbnEl.textContent=isbn;resultEl.style.display='flex';copyOpenBtn.disabled=false;againBtn.style.display='block';setStatus('ISBN detectado');await stopScanner()},()=>{});
+setStatus('Apuntá al código de barras');await setupTorch();
+}catch(err){console.error(err);cameraFailed=true;setStatus('Tocá para activar la cámara');showToastCameraFallback();flashBtn.disabled=true}finally{starting=false}}
+function showToastCameraFallback(){toastMsg('El navegador necesita permiso para usar la cámara')}
+async function toggleTorch(){try{const track=document.querySelector('#reader video')?.srcObject?.getVideoTracks?.()[0];if(!track?.getCapabilities||!('torch' in track.getCapabilities())){toastMsg('El flash no está disponible en este teléfono');return}torchOn=!torchOn;await track.applyConstraints({advanced:[{torch:torchOn}]});flashBtn.style.opacity=torchOn?'1':'.75';toastMsg(torchOn?'Flash encendido':'Flash apagado')}catch{toastMsg('No se pudo activar el flash')}}
+copyOpenBtn.addEventListener('click',async()=>{if(!currentIsbn)return;const url=SBS;let copied=false;try{await navigator.clipboard.writeText(currentIsbn);copied=true}catch{}const tab=window.open(url,'_blank');if(!tab)window.location.href=url;toastMsg(copied?'ISBN copiado. Pegalo en SBS.':'SBS abierto. Copiá el ISBN manualmente.')});
+manualBtn.addEventListener('click',()=>window.location.href=SBS);
+againBtn.addEventListener('click',startScanner);
+flashBtn.addEventListener('click',toggleTorch);
+shareBtn.addEventListener('click',async()=>{const data={title:'Escáner ISBN · SBS',text:'Escáner ISBN para consultar libros en SBS.',url:location.href};try{if(navigator.share)await navigator.share(data);else{await navigator.clipboard.writeText(location.href);toastMsg('Enlace copiado para compartir')}}catch{}});
+$('settingsBtn').addEventListener('click',async()=>{await stopScanner();home.classList.remove('active');settings.classList.add('active')});
+$('backBtn').addEventListener('click',()=>{settings.classList.remove('active');home.classList.add('active');startScanner()});
+document.querySelectorAll('#textSize button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#textSize button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const large=b.dataset.size==='large';document.body.classList.toggle('text-large',large);localStorage.setItem('isbn-text-size',large?'large':'normal')}));
+if(localStorage.getItem('isbn-text-size')==='large'){document.body.classList.add('text-large');document.querySelector('[data-size="normal"]').classList.remove('active');document.querySelector('[data-size="large"]').classList.add('active')}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;installBtn.style.display='block'});
+installBtn.addEventListener('click',async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;installBtn.style.display='none'});
+window.addEventListener('appinstalled',()=>{installBtn.style.display='none';toastMsg('App instalada')});
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(console.error));
+startScanner();
 })();
 </script>
 </body>
