@@ -128,23 +128,27 @@ async function releaseCamera(){
     const oldScanner=scanner;
     scanner=null;
     cameraRunId++;
+    let hadCamera=!!oldScanner;
     if(oldScanner){
       try{
-        if(typeof oldScanner.getState==='function'){
-          const state=oldScanner.getState();
-          if(state===2||state===3)await oldScanner.stop();
-        }else{await oldScanner.stop()}
+        const state=typeof oldScanner.getState==='function'?oldScanner.getState():null;
+        if(state===2||state===3||state===null)await oldScanner.stop();
       }catch(e){console.warn('stop() cámara:',e)}
-      try{await oldScanner.clear()}catch(e){console.warn('clear() cámara:',e)}
+      try{oldScanner.clear()}catch(e){console.warn('clear() cámara:',e)}
     }
     try{
       const video=document.querySelector('#reader video');
       const stream=video?.srcObject;
-      if(stream?.getTracks)stream.getTracks().forEach(track=>{try{track.stop()}catch{}});
+      if(stream?.getTracks){
+        hadCamera=true;
+        stream.getTracks().forEach(track=>{try{track.stop()}catch{}});
+      }
       if(video){try{video.pause();video.srcObject=null}catch{}}
     }catch{}
-    flashBtn.disabled=true;torchOn=false;flashBtn.style.opacity='1';
-    await wait(900);
+    flashBtn.disabled=true;
+    torchOn=false;
+    flashBtn.style.opacity='1';
+    if(hadCamera)await wait(650);
   })().finally(()=>{stopPromise=null});
   return stopPromise;
 }
@@ -152,45 +156,74 @@ async function stopScanner(){await releaseCamera()}
 async function setupTorch(){try{const video=document.querySelector('#reader video');const track=video?.srcObject?.getVideoTracks?.()[0];if(track?.getCapabilities&&('torch' in track.getCapabilities())){flashBtn.disabled=false;return}}catch{}flashBtn.disabled=true}
 async function startScanner(){
   if(starting)return;
-  if(stopPromise)await stopPromise;
-  starting=true;cameraFailed=false;
-  const thisRun=++cameraRunId;
-  currentIsbn='';$('reader').innerHTML='';isbnEl.textContent='';resultEl.style.display='none';copyOpenBtn.disabled=true;againBtn.style.display='none';flashBtn.disabled=true;setStatus('Iniciando cámara…');
+  starting=true;
+  cameraFailed=false;
+  currentIsbn='';
+  $('reader').innerHTML='';
+  isbnEl.textContent='';
+  resultEl.style.display='none';
+  copyOpenBtn.disabled=true;
+  againBtn.style.display='none';
+  againBtn.textContent='Escanear otro libro';
+  flashBtn.disabled=true;
+  setStatus('Iniciando cámara…');
   try{
     if(!window.Html5Qrcode)throw new Error('scanner library unavailable');
     await releaseCamera();
-    if(thisRun!==cameraRunId)return;
+    if(settings.classList.contains('active'))return;
+    const thisRun=++cameraRunId;
     scanner=new Html5Qrcode('reader',{verbose:false});
     const localScanner=scanner;
     await localScanner.start({facingMode:'environment'},{fps:12,qrbox:{width:Math.min(370,Math.floor(window.innerWidth*.78)),height:132},aspectRatio:1.777,disableFlip:true},async text=>{
-      if(thisRun!==cameraRunId)return;
-      const isbn=normalize(text);if(!likely(isbn)||currentIsbn)return;
-      currentIsbn=isbn;isbnEl.textContent=isbn;resultEl.style.display='flex';copyOpenBtn.disabled=false;againBtn.style.display='block';setStatus('ISBN detectado');
+      if(thisRun!==cameraRunId||currentIsbn)return;
+      const isbn=normalize(text);
+      if(!likely(isbn))return;
+      currentIsbn=isbn;
+      isbnEl.textContent=isbn;
+      resultEl.style.display='flex';
+      copyOpenBtn.disabled=false;
+      againBtn.style.display='block';
+      setStatus('ISBN detectado');
       try{
         const video=document.querySelector('#reader video');
         if(video&&video.videoWidth&&video.videoHeight){
-          const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
-          const frozen=canvas.toDataURL('image/jpeg',.9);
+          const canvas=document.createElement('canvas');
+          canvas.width=video.videoWidth;
+          canvas.height=video.videoHeight;
+          canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+          const frozen=canvas.toDataURL('image/jpeg',0.9);
           await releaseCamera();
-          const reader=$('reader');reader.innerHTML='';const img=document.createElement('img');img.src=frozen;img.alt='Imagen congelada del libro al detectar el ISBN';img.style.cssText='width:100%;height:100%;object-fit:cover;display:block';reader.appendChild(img);
+          const reader=$('reader');
+          reader.innerHTML='';
+          const img=document.createElement('img');
+          img.src=frozen;
+          img.alt='Imagen congelada del libro al detectar el ISBN';
+          img.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
+          reader.appendChild(img);
         }else await releaseCamera();
       }catch(e){console.warn('No se pudo congelar el frame',e);await releaseCamera()}
     },()=>{});
     if(thisRun!==cameraRunId){await releaseCamera();return}
     setStatus('Apuntá al código de barras');
-    await wait(150);
+    await wait(120);
     if(thisRun===cameraRunId)await setupTorch();
-  }catch(err){console.error('Error iniciando cámara:',err);cameraFailed=true;setStatus('No se pudo iniciar la cámara');flashBtn.disabled=true;showToastCameraFallback()}finally{starting=false}
+  }catch(err){
+    console.error('Error iniciando cámara:',err);
+    cameraFailed=true;
+    setStatus('No se pudo iniciar la cámara');
+    flashBtn.disabled=true;
+    showToastCameraFallback();
+  }finally{starting=false}
 }
 function showToastCameraFallback(){toastMsg('No se pudo activar la cámara');againBtn.textContent='Reactivar cámara';againBtn.style.display='block'}
 async function toggleTorch(){try{const track=document.querySelector('#reader video')?.srcObject?.getVideoTracks?.()[0];if(!track?.getCapabilities||!('torch' in track.getCapabilities())){toastMsg('El flash no está disponible en este teléfono');return}torchOn=!torchOn;await track.applyConstraints({advanced:[{torch:torchOn}]});flashBtn.style.opacity=torchOn?'1':'.75';toastMsg(torchOn?'Flash encendido':'Flash apagado')}catch{toastMsg('No se pudo activar el flash')}}
 copyOpenBtn.addEventListener('click',async()=>{if(!currentIsbn)return;let copied=false;try{await navigator.clipboard.writeText(currentIsbn);copied=true}catch{}leavingForSbs=true;toastMsg(copied?'ISBN copiado. Abriendo SBS…':'SBS abierto. Copiá el ISBN manualmente.');setTimeout(()=>{window.location.href=SBS},120)});
 manualBtn.addEventListener('click',async()=>{leavingForSbs=true;await releaseCamera();window.location.href=SBS});
-againBtn.addEventListener('click',async()=>{againBtn.disabled=true;await releaseCamera();$('reader').innerHTML='';await wait(700);againBtn.disabled=false;startScanner()});
+againBtn.addEventListener('click',async()=>{againBtn.disabled=true;await releaseCamera();$('reader').innerHTML='';await wait(500);againBtn.disabled=false;startScanner()});
 flashBtn.addEventListener('click',toggleTorch);
 shareBtn.addEventListener('click',async()=>{const data={title:'Escáner ISBN · SBS',text:'Escáner ISBN para consultar libros en SBS.',url:location.href};try{if(navigator.share)await navigator.share(data);else{await navigator.clipboard.writeText(location.href);toastMsg('Enlace copiado para compartir')}}catch{}});
 $('settingsBtn').addEventListener('click',async()=>{await releaseCamera();home.classList.remove('active');settings.classList.add('active')});
-$('backBtn').addEventListener('click',async()=>{settings.classList.remove('active');home.classList.add('active');await wait(400);startScanner()});
+$('backBtn').addEventListener('click',async()=>{settings.classList.remove('active');home.classList.add('active');await wait(350);startScanner()});
 document.querySelectorAll('#textSize button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#textSize button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const large=b.dataset.size==='large';document.body.classList.toggle('text-large',large);localStorage.setItem('isbn-text-size',large?'large':'normal');toastMsg('Tamaño actualizado')}));
 if(localStorage.getItem('isbn-text-size')==='large'){document.body.classList.add('text-large');document.querySelector('[data-size="normal"]').classList.remove('active');document.querySelector('[data-size="large"]').classList.add('active')}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;installBtn.style.display='block'});
@@ -198,7 +231,7 @@ installBtn.addEventListener('click',async()=>{if(!deferredInstallPrompt)return;d
 window.addEventListener('appinstalled',()=>{installBtn.style.display='none';toastMsg('App instalada')});
 window.addEventListener('pagehide',()=>{if(!settings.classList.contains('active')){shouldRestartOnShow=true;releaseCamera()}});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&leavingForSbs){shouldRestartOnShow=true;releaseCamera()}});
-window.addEventListener('pageshow',async e=>{if((leavingForSbs||shouldRestartOnShow||e.persisted)&&!settings.classList.contains('active')){leavingForSbs=false;shouldRestartOnShow=false;clearTimeout(restartTimer);restartTimer=setTimeout(async()=>{await releaseCamera();await wait(800);startScanner()},1000)}});
+window.addEventListener('pageshow',e=>{if((leavingForSbs||shouldRestartOnShow||e.persisted)&&!settings.classList.contains('active')){leavingForSbs=false;shouldRestartOnShow=false;clearTimeout(restartTimer);restartTimer=setTimeout(async()=>{await releaseCamera();await wait(700);startScanner()},900)}});
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(console.error));
 startScanner();
 })();
