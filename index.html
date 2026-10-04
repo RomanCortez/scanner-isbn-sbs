@@ -1,49 +1,508 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Escáner ISBN → SBS</title>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#f3f5f4;font-family:Arial,sans-serif;color:#202525}main{max-width:520px;margin:auto;padding:16px}.card{background:#fff;border-radius:20px;padding:18px;box-shadow:0 4px 20px #0002}h1{font-size:25px;margin:0 0 5px}p{color:#666;margin:6px 0 16px;line-height:1.35}.scan{width:100%;height:300px;background:#111;border-radius:15px;overflow:hidden;position:relative}video{width:100%;height:100%;object-fit:cover}.frame{position:absolute;left:9%;right:9%;top:29%;height:42%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 999px #0005}.status{text-align:center;font-weight:bold;margin:14px 0 10px;min-height:20px}.isbn{font-size:23px;text-align:center;letter-spacing:1.5px;padding:13px 9px;border:1px solid #ddd;border-radius:11px;background:#fafafa;min-height:53px;word-break:break-all}.buttons{display:grid;gap:10px;margin-top:12px}button{border:0;border-radius:13px;padding:15px 12px;font-size:17px;font-weight:bold;cursor:pointer}.primary{background:#111;color:#fff}.green{background:#16835d;color:#fff}.light{background:#e9edeb;color:#202525}.blue{background:#1769aa;color:#fff}.manual{display:flex;gap:8px;margin-top:18px}.manual input{min-width:0;flex:1;padding:13px;border:1px solid #ccc;border-radius:10px;font-size:17px}.manual button{padding:13px 18px}.small{font-size:13px;color:#777;margin-top:14px;line-height:1.45}.hidden{display:none}.tip{background:#eef8f4;border-radius:12px;padding:11px 12px;font-size:14px;color:#245b49;margin-top:13px;line-height:1.4}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#24221f">
+  <meta name="description" content="Escáner ISBN para consultar libros en SBS Distribuidora.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Escáner ISBN">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="favicon.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Escáner ISBN · SBS</title>
+
+  <style>
+    :root{
+      --ink:#24221f;
+      --ink-soft:#514b44;
+      --cream:#f8f5ef;
+      --beige:#e9e0d1;
+      --beige-2:#d9cdbb;
+      --paper:#fffdf9;
+      --line:#d7cdbf;
+      --accent:#8b7b68;
+      --ok:#596c5b;
+    }
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden}
+    body{
+      background:var(--cream);
+      color:var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-tap-highlight-color:transparent;
+    }
+    button{font:inherit}
+    .app{
+      width:100%;
+      height:100dvh;
+      height:100svh;
+      display:grid;
+      grid-template-rows:auto minmax(0,1fr) auto auto;
+      overflow:hidden;
+    }
+    header{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 16px 8px;
+      background:var(--paper);
+      border-bottom:1px solid var(--line);
+      min-height:62px;
+    }
+    .brand{
+      width:42px;height:42px;flex:0 0 42px;
+      border-radius:50%;
+      overflow:hidden;
+      background:#fff;
+      border:1px solid var(--line);
+      display:grid;place-items:center;
+    }
+    .brand img{width:100%;height:100%;object-fit:cover}
+    .titles{min-width:0}
+    h1{
+      margin:0;
+      font-size:18px;
+      line-height:1.1;
+      letter-spacing:-.02em;
+      font-weight:750;
+    }
+    .sub{
+      margin-top:3px;
+      color:var(--ink-soft);
+      font-size:11px;
+      line-height:1.2;
+    }
+
+    .scanner-wrap{
+      position:relative;
+      min-height:0;
+      padding:10px 12px 8px;
+      display:flex;
+      align-items:stretch;
+      justify-content:center;
+    }
+    #reader{
+      width:min(100%, 520px);
+      height:100%;
+      min-height:0;
+      border:1px solid var(--line);
+      border-radius:20px;
+      overflow:hidden;
+      background:#171614;
+      position:relative;
+    }
+    #reader video{
+      width:100% !important;
+      height:100% !important;
+      object-fit:cover !important;
+    }
+    #reader__dashboard_section,
+    #reader__dashboard_section_csr,
+    #reader__dashboard_section_swaplink{
+      display:none !important;
+    }
+    #reader img{
+      max-width:100%;
+    }
+
+    .scan-frame{
+      pointer-events:none;
+      position:absolute;
+      left:50%;top:50%;
+      width:min(72vw,320px);
+      height:min(30vw,120px);
+      transform:translate(-50%,-50%);
+      border:2px solid rgba(255,253,249,.92);
+      border-radius:12px;
+      box-shadow:0 0 0 9999px rgba(0,0,0,.12);
+    }
+    .scan-frame:before,.scan-frame:after{
+      content:"";
+      position:absolute;
+      width:22px;height:22px;
+      border-color:var(--beige);
+      border-style:solid;
+    }
+    .scan-frame:before{
+      left:-2px;top:-2px;border-width:3px 0 0 3px;border-radius:10px 0 0 0;
+    }
+    .scan-frame:after{
+      right:-2px;bottom:-2px;border-width:0 3px 3px 0;border-radius:0 0 10px 0;
+    }
+    .status{
+      position:absolute;
+      left:50%;bottom:18px;
+      transform:translateX(-50%);
+      background:rgba(36,34,31,.78);
+      color:#fffdf9;
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:999px;
+      padding:6px 11px;
+      font-size:11px;
+      white-space:nowrap;
+      backdrop-filter:blur(7px);
+    }
+
+    .info{
+      padding:0 16px 7px;
+      text-align:center;
+    }
+    .info p{
+      margin:0 auto;
+      max-width:520px;
+      color:var(--ink-soft);
+      font-size:11px;
+      line-height:1.3;
+    }
+    .isbn-result{
+      display:none;
+      align-items:center;
+      justify-content:center;
+      gap:7px;
+      margin:0 auto 5px;
+      max-width:520px;
+      padding:7px 10px;
+      background:var(--paper);
+      border:1px solid var(--line);
+      border-radius:10px;
+      font-size:13px;
+    }
+    .isbn-result strong{font-variant-numeric:tabular-nums;letter-spacing:.03em}
+
+    .actions{
+      padding:6px 14px calc(10px + env(safe-area-inset-bottom));
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      background:var(--paper);
+      border-top:1px solid var(--line);
+    }
+    .btn{
+      min-height:43px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:var(--beige);
+      color:var(--ink);
+      font-weight:700;
+      font-size:12px;
+      padding:0 10px;
+      cursor:pointer;
+    }
+    .btn:active{transform:scale(.985)}
+    .btn.primary{
+      background:var(--ink);
+      color:var(--paper);
+      border-color:var(--ink);
+    }
+    .btn.ghost{background:var(--paper)}
+    .btn:disabled{opacity:.45}
+    .wide{grid-column:1/-1}
+    .utility-row{
+      position:absolute;
+      top:18px;right:20px;
+      z-index:5;
+      display:flex;
+      gap:7px;
+    }
+    .circle-btn{
+      width:40px;height:40px;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,.35);
+      background:rgba(36,34,31,.72);
+      color:#fffdf9;
+      display:grid;place-items:center;
+      cursor:pointer;
+      backdrop-filter:blur(8px);
+    }
+    .circle-btn svg{width:19px;height:19px}
+    .install{
+      display:none;
+    }
+    .toast{
+      position:fixed;
+      left:50%;bottom:88px;
+      transform:translate(-50%,20px);
+      opacity:0;
+      pointer-events:none;
+      background:var(--ink);
+      color:var(--paper);
+      border:1px solid rgba(255,255,255,.15);
+      border-radius:10px;
+      padding:9px 12px;
+      font-size:12px;
+      z-index:30;
+      transition:.22s ease;
+      white-space:nowrap;
+    }
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+
+    @media (max-height:620px){
+      header{min-height:52px;padding:7px 12px}
+      .brand{width:34px;height:34px;flex-basis:34px}
+      h1{font-size:16px}
+      .sub{display:none}
+      .scanner-wrap{padding:7px 10px 5px}
+      .info{padding-bottom:3px}
+      .info p{font-size:10px}
+      .actions{padding:4px 10px 7px}
+      .btn{min-height:38px;font-size:11px}
+    }
+  </style>
 </head>
-<body><main><div class="card">
-<h1>📚 Escáner ISBN → SBS</h1>
-<p>Escaneá el código de barras del libro. El ISBN queda listo para copiar y abrir tu SBS.</p>
-<div class="scan"><video id="video" playsinline muted></video><div class="frame"></div></div>
-<div id="status" class="status">Tocá “Escanear ISBN” para empezar.</div>
-<div id="isbn" class="isbn">—</div>
-<div class="buttons">
-<button id="start" class="primary">📷 Escanear ISBN</button>
-<button id="search" class="green hidden">🚀 Copiar ISBN y abrir SBS</button>
-<button id="copy" class="light hidden">📋 Copiar ISBN</button>
-<button id="next" class="blue hidden">📖 Siguiente libro</button>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><img src="icon-192.png" alt="Logo"></div>
+    <div class="titles">
+      <h1>Escáner ISBN</h1>
+      <div class="sub">Escaneá un libro y consultalo en SBS</div>
+    </div>
+  </header>
+
+  <main class="scanner-wrap">
+    <div id="reader"></div>
+    <div class="scan-frame"></div>
+    <div class="status" id="status">Iniciando cámara…</div>
+
+    <div class="utility-row">
+      <button class="circle-btn" id="flashBtn" type="button" aria-label="Encender flash" title="Flash" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M13 2 5 13h6l-1 9 8-12h-6l1-8Z"/>
+        </svg>
+      </button>
+      <button class="circle-btn" id="shareBtn" type="button" aria-label="Compartir app" title="Compartir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/>
+          <path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>
+        </svg>
+      </button>
+    </div>
+  </main>
+
+  <section class="info">
+    <div class="isbn-result" id="result">
+      <span>ISBN:</span><strong id="isbn"></strong>
+    </div>
+    <p>Apuntá al código de barras del libro. Cuando lo detecte, podés copiar el ISBN y abrir SBS, o entrar a SBS para buscarlo manualmente.</p>
+  </section>
+
+  <footer class="actions">
+    <button class="btn primary" id="copyOpenBtn" type="button" disabled>Copiar ISBN y abrir SBS</button>
+    <button class="btn ghost" id="manualBtn" type="button">Abrir SBS · búsqueda manual</button>
+    <button class="btn ghost wide" id="againBtn" type="button">Escanear otro libro</button>
+    <button class="btn ghost wide install" id="installBtn" type="button">Instalar como app</button>
+  </footer>
 </div>
-<div class="manual"><input id="manual" inputmode="numeric" autocomplete="off" placeholder="O escribí el ISBN"><button id="manualBtn" class="light">OK</button></div>
-<div class="tip">💡 <b>En SBS:</b> seleccioná <b>I - ISBN</b> y pegá el número. Chrome no permite que esta página escriba directamente dentro del buscador de SBS.</div>
-<div class="small">El botón verde hace el máximo posible con una página web: copia el ISBN mediante el toque del usuario y abre tu SBS. Después solo tenés que pegarlo en el campo ISBN.</div>
-</div></main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-const video=document.getElementById('video'),status=document.getElementById('status'),out=document.getElementById('isbn'),start=document.getElementById('start'),copy=document.getElementById('copy'),search=document.getElementById('search'),next=document.getElementById('next'),manual=document.getElementById('manual'),manualBtn=document.getElementById('manualBtn');
-let stream=null,detector=null,timer=null,current='';
-function clean(v){return String(v||'').replace(/[^0-9Xx]/g,'').toUpperCase()}
-function setISBN(v){v=clean(v);if(v.length<10){status.textContent='⚠️ El ISBN parece incompleto.';return}current=v;out.textContent=v;status.textContent='✅ ISBN detectado';copy.classList.remove('hidden');search.classList.remove('hidden');next.classList.remove('hidden');if(navigator.vibrate)navigator.vibrate(120);stop()}
-function stop(){if(timer){clearTimeout(timer);timer=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null}
-async function scan(){
- try{
-  if(!('BarcodeDetector' in window)){status.textContent='⚠️ Tu navegador no tiene lector automático. Usá el campo de abajo o Google Lens.';return}
-  const formats=await BarcodeDetector.getSupportedFormats();
-  const wanted=formats.filter(x=>['ean_13','ean_8','upc_a','upc_e'].includes(x));
-  detector=new BarcodeDetector({formats:wanted.length?wanted:formats});
-  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
-  video.srcObject=stream;await video.play();status.textContent='📷 Buscando código…';
-  const loop=async()=>{if(!stream)return;try{const codes=await detector.detect(video);if(codes.length&&codes[0].rawValue){setISBN(codes[0].rawValue);return}}catch(e){}timer=setTimeout(loop,160)};loop();
- }catch(e){status.textContent='⚠️ No se pudo abrir la cámara. Revisá el permiso de Chrome.';}
-}
-start.onclick=scan;
-copy.onclick=async()=>{if(!current)return;try{await navigator.clipboard.writeText(current);status.textContent='✅ ISBN copiado al portapapeles';}catch(e){status.textContent='Seleccioná el número y copiá: '+current;}};
-search.onclick=async()=>{if(!current)return;try{await navigator.clipboard.writeText(current);status.textContent='📋 Copiado. Abriendo SBS…';setTimeout(()=>location.href='https://ag.sbs.com.ar/Home/Books',120);}catch(e){status.textContent='⚠️ No se pudo copiar. Usá “Copiar ISBN” y luego abrí SBS.';copy.classList.remove('hidden');}};
-next.onclick=()=>{current='';out.textContent='—';manual.value='';status.textContent='Listo para el siguiente libro.';search.classList.add('hidden');copy.classList.add('hidden');next.classList.add('hidden');scan()};
-manualBtn.onclick=()=>setISBN(manual.value);manual.addEventListener('keydown',e=>{if(e.key==='Enter')manualBtn.click()});window.addEventListener('pagehide',stop);
-</script></body></html>
+(() => {
+  const SBS = "https://ag.sbs.com.ar/Home/Books";
+  const readerId = "reader";
+  const statusEl = document.getElementById("status");
+  const isbnEl = document.getElementById("isbn");
+  const resultEl = document.getElementById("result");
+  const copyOpenBtn = document.getElementById("copyOpenBtn");
+  const manualBtn = document.getElementById("manualBtn");
+  const againBtn = document.getElementById("againBtn");
+  const flashBtn = document.getElementById("flashBtn");
+  const shareBtn = document.getElementById("shareBtn");
+  const installBtn = document.getElementById("installBtn");
+  const toast = document.getElementById("toast");
+
+  let scanner = null;
+  let currentIsbn = "";
+  let torchOn = false;
+  let starting = false;
+  let deferredInstallPrompt = null;
+
+  function showToast(message) {
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(showToast.t);
+    showToast.t = setTimeout(() => toast.classList.remove("show"), 1900);
+  }
+
+  function normalizeIsbn(value) {
+    const digits = String(value || "").replace(/[^0-9Xx]/g, "").toUpperCase();
+    if (digits.length === 13 && digits.startsWith("978")) return digits;
+    if (digits.length === 13 && digits.startsWith("979")) return digits;
+    if (digits.length === 10) return digits;
+    return digits;
+  }
+
+  function isLikelyIsbn(value) {
+    const n = normalizeIsbn(value);
+    return n.length === 10 || n.length === 13;
+  }
+
+  function setStatus(text) {
+    statusEl.textContent = text;
+  }
+
+  function stopScanner() {
+    if (!scanner) return Promise.resolve();
+    return scanner.stop().catch(() => {}).then(() => {
+      flashBtn.disabled = true;
+      torchOn = false;
+    });
+  }
+
+  async function startScanner() {
+    if (starting) return;
+    starting = true;
+    currentIsbn = "";
+    isbnEl.textContent = "";
+    resultEl.style.display = "none";
+    copyOpenBtn.disabled = true;
+    againBtn.style.display = "none";
+    flashBtn.disabled = true;
+    setStatus("Iniciando cámara…");
+
+    try {
+      if (!scanner) scanner = new Html5Qrcode(readerId, { verbose: false });
+
+      await scanner.start(
+        { facingMode: { ideal: "environment" } },
+        {
+          fps: 12,
+          qrbox: { width: Math.min(320, Math.floor(window.innerWidth * 0.72)), height: 110 },
+          aspectRatio: 1.777,
+          disableFlip: true
+        },
+        async (decodedText) => {
+          const isbn = normalizeIsbn(decodedText);
+          if (!isLikelyIsbn(decodedText)) return;
+          currentIsbn = isbn;
+          isbnEl.textContent = isbn;
+          resultEl.style.display = "flex";
+          copyOpenBtn.disabled = false;
+          againBtn.style.display = "block";
+          setStatus("ISBN detectado");
+          await stopScanner();
+        },
+        () => {}
+      );
+
+      setStatus("Apuntá al código de barras");
+      await setupTorch();
+    } catch (err) {
+      console.error(err);
+      setStatus("No se pudo iniciar la cámara");
+      showToast("Revisá el permiso de cámara del navegador");
+      flashBtn.disabled = true;
+    } finally {
+      starting = false;
+    }
+  }
+
+  async function setupTorch() {
+    try {
+      const track = scanner.getRunningTrackCameraCapabilities?.();
+      const caps = scanner.getRunningTrackCapabilities?.();
+      if (caps && "torch" in caps) {
+        flashBtn.disabled = false;
+        return;
+      }
+      // Some versions expose the MediaStreamTrack directly.
+      const video = document.querySelector("#reader video");
+      const stream = video?.srcObject;
+      const t = stream?.getVideoTracks?.()[0];
+      if (t && t.getCapabilities && "torch" in t.getCapabilities()) {
+        flashBtn.disabled = false;
+        return;
+      }
+      flashBtn.disabled = true;
+    } catch {
+      flashBtn.disabled = true;
+    }
+  }
+
+  async function toggleTorch() {
+    try {
+      const video = document.querySelector("#reader video");
+      const track = video?.srcObject?.getVideoTracks?.()[0];
+      if (!track || !track.getCapabilities || !("torch" in track.getCapabilities())) {
+        showToast("El flash no está disponible en este teléfono");
+        return;
+      }
+      torchOn = !torchOn;
+      await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+      flashBtn.style.opacity = torchOn ? "1" : ".8";
+      showToast(torchOn ? "Flash encendido" : "Flash apagado");
+    } catch {
+      showToast("El flash no se pudo activar");
+    }
+  }
+
+  copyOpenBtn.addEventListener("click", async () => {
+    if (!currentIsbn) return;
+    // Open immediately from the user gesture, then copy in parallel.
+    const tab = window.open(SBS, "_blank");
+    try {
+      await navigator.clipboard.writeText(currentIsbn);
+      showToast("ISBN copiado. Pegalo en SBS.");
+    } catch {
+      showToast("SBS abierto. Copiá el ISBN manualmente.");
+    }
+    if (!tab) window.location.href = SBS;
+  });
+
+  manualBtn.addEventListener("click", () => {
+    window.location.href = SBS;
+  });
+
+  againBtn.addEventListener("click", async () => {
+    await startScanner();
+  });
+
+  flashBtn.addEventListener("click", toggleTorch);
+
+  shareBtn.addEventListener("click", async () => {
+    const shareData = {
+      title: "Escáner ISBN · SBS",
+      text: "Escáner ISBN para consultar libros en SBS.",
+      url: location.href
+    };
+    try {
+      if (navigator.share) await navigator.share(shareData);
+      else {
+        await navigator.clipboard.writeText(location.href);
+        showToast("Enlace copiado para compartir");
+      }
+    } catch {}
+  });
+
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    installBtn.style.display = "block";
+  });
+
+  installBtn.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.style.display = "none";
+  });
+
+  window.addEventListener("appinstalled", () => {
+    installBtn.style.display = "none";
+    showToast("App instalada");
+  });
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(console.error));
+  }
+
+  // Start automatically: no separate "Escanear" button.
+  startScanner();
+})();
+</script>
+</body>
+</html>
