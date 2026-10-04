@@ -16,10 +16,10 @@
 <div class="buttons">
 <button id="start">📷 Escanear ISBN</button>
 <button id="copy" class="hidden">📋 Copiar ISBN</button>
-<button id="search" class="hidden">🔎 Buscar en SBS</button>
+<button id="search" class="hidden">🔎 Abrir SBS (ISBN copiado)</button>
 </div>
 <div class="manual"><input id="manual" inputmode="numeric" placeholder="O escribí el ISBN"><button id="manualBtn">OK</button></div>
-<div class="small">La cámara se usa solamente en esta página. Si tu navegador no permite el lector automático, podés usar el campo manual.</div>
+<div class="small">Al detectar el ISBN, la herramienta intenta copiarlo al portapapeles. Luego abre SBS Distribuidora. En SBS elegí “ISBN” y pegá el número. Si el navegador no permite el lector automático, podés usar el campo manual.</div>
 </div></main>
 <script>
 const video=document.getElementById('video'), status=document.getElementById('status'), out=document.getElementById('isbn'), start=document.getElementById('start'), copy=document.getElementById('copy'), search=document.getElementById('search'), manual=document.getElementById('manual'), manualBtn=document.getElementById('manualBtn');
@@ -40,7 +40,7 @@ async function scan(){
 }
 start.onclick=scan;
 copy.onclick=async()=>{try{await navigator.clipboard.writeText(current);status.textContent='📋 ISBN copiado';}catch(e){status.textContent='Seleccioná y copiá el ISBN: '+current;}};
-search.onclick=()=>{if(current)location.href='https://www.sbs.com.ar/?ft='+encodeURIComponent(current)};
+search.onclick=async()=>{if(!current)return; try{await navigator.clipboard.writeText(current);}catch(e){} location.href='https://ag.sbs.com.ar/Home/Books';};
 manualBtn.onclick=()=>setISBN(manual.value);
 manual.addEventListener('keydown',e=>{if(e.key==='Enter')manualBtn.click()});
 window.addEventListener('pagehide',stop);
