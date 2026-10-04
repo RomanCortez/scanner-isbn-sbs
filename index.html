@@ -116,7 +116,7 @@ body.text-large{--scale:1.12}body.text-large h1{font-size:24px}body.text-large .
 const SBS="https://ag.sbs.com.ar/Home/Books";
 const $=id=>document.getElementById(id);
 const home=$('home'),settings=$('settings'),statusEl=$('status'),isbnEl=$('isbn'),resultEl=$('result'),copyOpenBtn=$('copyOpenBtn'),manualBtn=$('manualBtn'),againBtn=$('againBtn'),flashBtn=$('flashBtn'),shareBtn=$('shareBtn'),installBtn=$('installBtn'),toast=$('toast');
-let scanner=null,currentIsbn='',starting=false,torchOn=false,deferredInstallPrompt=null, cameraFailed=false, leavingForSbs=false;
+let scanner=null,currentIsbn='',starting=false,torchOn=false,deferredInstallPrompt=null,cameraFailed=false,leavingForSbs=false,shouldRestartOnShow=false,restartTimer=null;
 function toastMsg(m){toast.textContent=m;toast.classList.add('show');clearTimeout(toastMsg.t);toastMsg.t=setTimeout(()=>toast.classList.remove('show'),2100)}
 function normalize(v){const d=String(v||'').replace(/[^0-9Xx]/g,'').toUpperCase();return d}
 function likely(v){const d=normalize(v);return d.length===10||d.length===13}
@@ -145,7 +145,9 @@ if(localStorage.getItem('isbn-text-size')==='large'){document.body.classList.add
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;installBtn.style.display='block'});
 installBtn.addEventListener('click',async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;installBtn.style.display='none'});
 window.addEventListener('appinstalled',()=>{installBtn.style.display='none';toastMsg('App instalada')});
-window.addEventListener('pageshow',async e=>{if(leavingForSbs || e.persisted){leavingForSbs=false;if(settings.classList.contains('active'))return;await startScanner()}});
+window.addEventListener('pagehide',()=>{if(!settings.classList.contains('active')){shouldRestartOnShow=true;try{scanner?.stop()}catch{} }});
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden' && leavingForSbs){shouldRestartOnShow=true;try{scanner?.stop()}catch{}}});
+ window.addEventListener('pageshow',async e=>{if((leavingForSbs||shouldRestartOnShow||e.persisted) && !settings.classList.contains('active')){leavingForSbs=false;shouldRestartOnShow=false;clearTimeout(restartTimer);restartTimer=setTimeout(async()=>{await stopScanner();await startScanner()},350)}});
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(console.error));
 startScanner();
 })();
