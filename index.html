@@ -229,9 +229,59 @@ if(localStorage.getItem('isbn-text-size')==='large'){document.body.classList.add
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;installBtn.style.display='block'});
 installBtn.addEventListener('click',async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;installBtn.style.display='none'});
 window.addEventListener('appinstalled',()=>{installBtn.style.display='none';toastMsg('App instalada')});
-window.addEventListener('pagehide',()=>{if(!settings.classList.contains('active')){shouldRestartOnShow=true;releaseCamera()}});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&leavingForSbs){shouldRestartOnShow=true;releaseCamera()}});
-window.addEventListener('pageshow',e=>{if((leavingForSbs||shouldRestartOnShow||e.persisted)&&!settings.classList.contains('active')){leavingForSbs=false;shouldRestartOnShow=false;clearTimeout(restartTimer);restartTimer=setTimeout(async()=>{await releaseCamera();await wait(700);startScanner()},900)}});
+let restartQueued=false;
+async function restartCameraAfterReturn(){
+  if(settings.classList.contains('active')||starting||restartQueued)return;
+  restartQueued=true;
+  clearTimeout(restartTimer);
+  restartTimer=setTimeout(async()=>{
+    try{
+      await releaseCamera();
+      await wait(900);
+      if(!settings.classList.contains('active')){
+        leavingForSbs=false;
+        shouldRestartOnShow=false;
+        startScanner();
+      }
+    }finally{
+      restartQueued=false;
+    }
+  },700);
+}
+
+window.addEventListener('pagehide',()=>{
+  if(!settings.classList.contains('active')){
+    shouldRestartOnShow=true;
+    releaseCamera();
+  }
+});
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){
+    if(leavingForSbs){
+      shouldRestartOnShow=true;
+      releaseCamera();
+    }
+    return;
+  }
+
+  /*
+   * En una PWA instalada, al volver desde SBS puede no dispararse
+   * pageshow de la misma forma que en Chrome normal. Por eso también
+   * escuchamos el regreso a visibilityState=visible.
+   */
+  if(document.visibilityState==='visible' &&
+     (leavingForSbs||shouldRestartOnShow)){
+    restartCameraAfterReturn();
+  }
+});
+
+window.addEventListener('pageshow',e=>{
+  if((leavingForSbs||shouldRestartOnShow||e.persisted)&&
+     !settings.classList.contains('active')){
+    restartCameraAfterReturn();
+  }
+});
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(console.error));
 startScanner();
 })();
